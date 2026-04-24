@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History Hunt PH | Profile</title>
+  <link rel="icon" type="image/png" href="/assets/history-hunt-logo-circle.png">
+  <link rel="apple-touch-icon" href="/assets/history-hunt-logo-circle.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="profile">
+  <main class="game-shell">
+    <section class="topbar topbar-nav-only">
+      <nav class="game-menu" aria-label="Game sections">
+        <a class="menu-link" href="/game.html">Game</a>
+        <a class="menu-link is-active" href="/profile.html">Profile</a>
+        <a class="menu-link" href="/leaderboard.html">Leaderboard</a>
+        <button id="logout-button" type="button" class="menu-link menu-link-logout">Log Out</button>
+      </nav>
+    </section>
+
+    <section class="hero compact-hero">
+      <div class="hero-banner">
+        <p class="eyebrow">Philippine History Guessing Game</p>
+        <p class="chapter-tag">Player Profile</p>
+      </div>
+      <h1>Profile</h1>
+      <p class="intro">Manage your public identity and keep your account ready for the leaderboard.</p>
+    </section>
+
+    <section class="profile-layout">
+      <section class="profile-panel">
+        <div class="profile-card profile-card-main">
+          <p class="panel-label">Player Identity</p>
+          <div class="profile-hero">
+            <img id="profile-view-avatar" class="profile-page-avatar" src="" alt="Player profile">
+            <div>
+              <h2 id="profile-view-name" class="leaderboard-title">Guest</h2>
+              <p id="profile-view-username" class="auth-copy">@guest</p>
+              <p id="profile-view-gender" class="auth-copy">Gender: Not set</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-card">
+          <p class="panel-label">Career Stats</p>
+          <div class="scoreboard compact-scoreboard">
+            <div class="score-card">
+              <span class="score-label">Best Score</span>
+              <strong id="profile-best-score">0</strong>
+            </div>
+            <div class="score-card">
+              <span class="score-label">Best Solved</span>
+              <strong id="profile-best-solved">0</strong>
+            </div>
+            <div class="score-card">
+              <span class="score-label">Best Streak</span>
+              <strong id="profile-best-streak">0</strong>
+            </div>
+            <div class="score-card">
+              <span class="score-label">Hint Coins</span>
+              <strong id="profile-coins">0</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="profile-card">
+        <p class="panel-label">Edit Profile</p>
+        <form id="profile-form" class="profile-form">
+          <label class="auth-field">
+            <span>Game Name</span>
+            <input id="game-name-input" type="text" maxlength="20" placeholder="Enter game name">
+          </label>
+
+          <label class="auth-field">
+            <span>Gender</span>
+            <select id="gender-input">
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Non-binary">Non-binary</option>
+              <option value="Prefer not to say">Prefer not to say</option>
+            </select>
+          </label>
+
+          <label class="auth-field profile-upload">
+            <span>Profile Image</span>
+            <input id="profile-image-input" type="file" accept="image/*">
+          </label>
+
+          <div class="profile-preview-wrap">
+            <img id="profile-preview" class="profile-preview" src="" alt="Profile preview">
+            <p class="auth-copy">This image is saved to your account.</p>
+          </div>
+
+          <button id="save-profile-button" type="submit">Save Profile</button>
+        </form>
+
+        <p id="profile-feedback" class="feedback auth-feedback" aria-live="polite">Update your profile here.</p>
+      </section>
+    </section>
+  </main>
+
+  <script src="questions.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

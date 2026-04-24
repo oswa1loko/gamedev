@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History Hunt PH | Game</title>
+  <link rel="icon" type="image/png" href="/assets/history-hunt-logo-circle.png">
+  <link rel="apple-touch-icon" href="/assets/history-hunt-logo-circle.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="game">
+  <main class="game-shell">
+    <section class="topbar topbar-nav-only">
+      <nav class="game-menu" aria-label="Game sections">
+        <a class="menu-link is-active" href="/game.html">Game</a>
+        <a class="menu-link" href="/profile.html">Profile</a>
+        <a class="menu-link" href="/leaderboard.html">Leaderboard</a>
+        <button id="logout-button" type="button" class="menu-link menu-link-logout">Log Out</button>
+      </nav>
+    </section>
+
+    <section class="hero compact-hero">
+      <div class="hero-banner">
+        <p class="eyebrow">Philippine History Guessing Game</p>
+        <p class="chapter-tag">Archive Mission</p>
+      </div>
+      <h1>Game</h1>
+      <p class="intro">Focus on the clue, answer within 3 tries, and earn score and hint coins.</p>
+    </section>
+
+    <section class="scoreboard hud-scoreboard">
+      <div class="score-card">
+        <span class="score-label">Score</span>
+        <strong id="score-value">0</strong>
+      </div>
+      <div class="score-card">
+        <span class="score-label">Hint Coins</span>
+        <strong id="coins-value">0</strong>
+      </div>
+      <div class="score-card">
+        <span class="score-label">Solved</span>
+        <strong id="solved-value">0</strong>
+      </div>
+      <div class="score-card">
+        <span class="score-label">Streak</span>
+        <strong id="streak-value">0</strong>
+      </div>
+    </section>
+
+    <section class="game-panel">
+      <div class="card-frame">
+        <div class="image-hud">
+          <span class="hud-chip">Historical Archive</span>
+          <span class="hud-chip hud-chip-accent">Visual Evidence</span>
+        </div>
+        <img id="history-image" class="history-image" src="" alt="">
+      </div>
+
+      <div class="content-panel">
+        <div class="status-row">
+          <span id="round-label" class="badge">Round 1</span>
+          <span id="attempts-label" class="badge badge-warning">Attempts left: 3</span>
+        </div>
+
+        <div class="question-header">
+          <p class="panel-label">Current Mission</p>
+          <h2 id="prompt-title">Who am I?</h2>
+        </div>
+        <p id="prompt-description" class="prompt-description"></p>
+
+        <form id="guess-form" class="guess-form">
+          <label for="guess-input" class="sr-only">Your answer</label>
+          <input id="guess-input" name="guess" type="text" autocomplete="off" placeholder="Type your answer here">
+          <button type="submit">Submit Guess</button>
+        </form>
+
+        <p id="feedback" class="feedback" aria-live="polite"></p>
+
+        <div class="hint-panel">
+          <div class="hint-header">
+            <span class="badge badge-hint">Hints</span>
+            <button id="hint-button" class="secondary-button" type="button">Buy Hint (3 pts)</button>
+          </div>
+          <p id="hint-text" class="hint-text">Earn points from correct answers to unlock hints in later rounds.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="questions.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

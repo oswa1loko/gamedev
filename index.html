@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History Hunt PH</title>
+  <link rel="icon" type="image/png" href="/assets/history-hunt-logo-circle.png">
+  <link rel="apple-touch-icon" href="/assets/history-hunt-logo-circle.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-background" aria-hidden="true"></div>
+  <main id="auth-screen" class="auth-shell">
+    <section class="hero auth-hero launch-hero">
+      <div class="hero-banner">
+        <p class="eyebrow">Philippine History Guessing Game</p>
+        <p class="chapter-tag">Archive Challenge</p>
+      </div>
+      <div class="launch-content">
+        <img class="brand-logo" src="/assets/history-hunt-logo.png" alt="History Hunt PH logo">
+        <div class="launch-copy">
+          <h1>History Hunt PH</h1>
+          <p class="intro">Guess the clue. Build your streak. Unlock harder Philippine history.</p>
+          <div class="hero-actions">
+            <button id="guest-play-button" type="button">Play as Guest</button>
+            <button id="hero-login-button" type="button" class="secondary-button">Log In / Register</button>
+          </div>
+          <div class="hero-pills" aria-label="Game features">
+            <span>3 Attempts</span>
+            <span>Hint Coins</span>
+            <span>5 Streak: Medium</span>
+            <span>10 Streak: Hard</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-panel auth-panel-standalone">
+      <div class="auth-card auth-card-status">
+        <p class="panel-label">How It Plays</p>
+        <h2 class="auth-title">Fast, visual, competitive</h2>
+        <div class="feature-list">
+          <div class="feature-item">
+            <strong>3 attempts</strong>
+            <span>First try scores highest. Third try is your final shot.</span>
+          </div>
+          <div class="feature-item">
+            <strong>Hint coins</strong>
+            <span>Correct answers earn coins you can spend when stuck.</span>
+          </div>
+          <div class="feature-item">
+            <strong>Leaderboard</strong>
+            <span>Create an account to save progress and climb the board.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-card auth-card-primary">
+        <p class="panel-label">Player Access</p>
+
+        <section id="login-panel" class="auth-mode-panel">
+          <h2 class="auth-title">Log In</h2>
+          <p class="auth-copy">Enter your account to continue your Philippine history run.</p>
+
+          <form id="login-form" class="auth-form auth-form-single">
+            <label class="auth-field">
+              <span>Username</span>
+              <input id="login-username-input" type="text" maxlength="18" autocomplete="username" placeholder="Enter username">
+            </label>
+            <label class="auth-field">
+              <span>Password</span>
+              <span class="password-control">
+                <input id="login-password-input" type="password" maxlength="32" autocomplete="current-password" placeholder="Enter password">
+                <button class="password-toggle" type="button" data-toggle-password="login-password-input" aria-label="Show password" aria-pressed="false">
+                  <span>Show</span>
+                </button>
+              </span>
+            </label>
+            <div class="auth-actions">
+              <button id="login-button" type="submit">Log In</button>
+            </div>
+          </form>
+
+          <p class="auth-switch-copy">No account yet?</p>
+          <button id="show-register-button" type="button" class="secondary-button auth-switch-button">Create Account</button>
+        </section>
+
+        <section id="register-panel" class="auth-mode-panel" hidden>
+          <h2 class="auth-title">Set Up Account</h2>
+          <p class="auth-copy">Create your username and confirm your password before entering the game.</p>
+
+          <form id="register-form" class="auth-form auth-form-single">
+            <label class="auth-field">
+              <span>Username</span>
+              <input id="register-username-input" type="text" maxlength="18" autocomplete="username" placeholder="Choose username">
+            </label>
+            <label class="auth-field">
+              <span>Password</span>
+              <span class="password-control">
+                <input id="register-password-input" type="password" maxlength="32" autocomplete="new-password" placeholder="Create password">
+                <button class="password-toggle" type="button" data-toggle-password="register-password-input" aria-label="Show password" aria-pressed="false">
+                  <span>Show</span>
+                </button>
+              </span>
+            </label>
+            <label class="auth-field">
+              <span>Repeat Password</span>
+              <span class="password-control">
+                <input id="register-repeat-password-input" type="password" maxlength="32" autocomplete="new-password" placeholder="Repeat password">
+                <button class="password-toggle" type="button" data-toggle-password="register-repeat-password-input" aria-label="Show password" aria-pressed="false">
+                  <span>Show</span>
+                </button>
+              </span>
+            </label>
+            <div class="auth-actions">
+              <button id="register-button" type="submit">Continue</button>
+              <button id="show-login-button" type="button" class="secondary-button">Back to Log In</button>
+            </div>
+          </form>
+        </section>
+
+        <p id="auth-feedback" class="feedback auth-feedback" aria-live="polite">Log in to save your score and join the leaderboard.</p>
+      </div>
+    </section>
+  </main>
+
+  <main id="app-shell" class="game-shell" hidden>
+    <section class="topbar topbar-nav-only">
+      <nav class="game-menu" aria-label="Game sections">
+        <button class="menu-link is-active" type="button" data-view="game">Game</button>
+        <button class="menu-link" type="button" data-view="profile">Profile</button>
+        <button class="menu-link" type="button" data-view="leaderboard">Leaderboard</button>
+        <button id="logout-button" type="button" class="menu-link menu-link-logout">Log Out</button>
+      </nav>
+    </section>
+
+    <section class="hero compact-hero">
+      <div class="hero-banner">
+        <p class="eyebrow">Philippine History Guessing Game</p>
+        <p id="section-tag" class="chapter-tag">Archive Mission</p>
+      </div>
+      <h1 id="section-title">Game</h1>
+      <p id="section-intro" class="intro">Focus on the clue, answer within 3 tries, and earn score and hint coins.</p>
+    </section>
+
+    <section id="view-game" class="app-view">
+      <section class="scoreboard hud-scoreboard">
+        <div class="score-card">
+          <span class="score-label">Score</span>
+          <strong id="score-value">0</strong>
+        </div>
+        <div class="score-card">
+          <span class="score-label">Hint Coins</span>
+          <strong id="coins-value">0</strong>
+        </div>
+        <div class="score-card">
+          <span class="score-label">Solved</span>
+          <strong id="solved-value">0</strong>
+        </div>
+        <div class="score-card">
+          <span class="score-label">Streak</span>
+          <strong id="streak-value">0</strong>
+        </div>
+      </section>
+
+      <section class="mission-strip" aria-label="Mission progress">
+        <div>
+          <span id="player-status-label" class="mission-label">Guest Run</span>
+          <strong id="mission-progress-label">Round 1 of 8</strong>
+        </div>
+        <div class="mission-options">
+          <span id="difficulty-label" class="difficulty-pill">Easy</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <span id="mission-progress-bar"></span>
+        </div>
+      </section>
+
+      <section class="game-panel">
+        <div class="card-frame">
+          <div class="image-hud">
+            <span class="hud-chip">Historical Archive</span>
+            <span class="hud-chip hud-chip-accent">Visual Evidence</span>
+          </div>
+          <img id="history-image" class="history-image" src="" alt="">
+        </div>
+
+        <div class="content-panel">
+          <div class="status-row">
+            <span id="round-label" class="badge">Round 1</span>
+            <span id="attempts-label" class="badge badge-warning">Attempts left: 3</span>
+          </div>
+
+          <div class="question-header">
+            <p class="panel-label">Current Mission</p>
+            <h2 id="prompt-title">Who am I?</h2>
+          </div>
+          <p id="prompt-description" class="prompt-description"></p>
+
+          <form id="guess-form" class="guess-form">
+            <label for="guess-input" class="sr-only">Your answer</label>
+            <input id="guess-input" name="guess" type="text" autocomplete="off" placeholder="Type your answer here">
+            <button type="submit">Submit Guess</button>
+          </form>
+
+          <p id="feedback" class="feedback" aria-live="polite"></p>
+
+          <div class="hint-panel">
+            <div class="hint-header">
+              <span class="badge badge-hint">Hints</span>
+              <button id="hint-button" class="secondary-button" type="button">Buy Hint (3 pts)</button>
+            </div>
+            <p id="hint-text" class="hint-text">Earn points from correct answers to unlock hints in later rounds.</p>
+          </div>
+
+          <div class="round-actions">
+            <button id="next-question-button" class="secondary-button" type="button" hidden>Next Question</button>
+            <button id="save-run-button" class="secondary-button" type="button" hidden>Save My Score</button>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section id="view-profile" class="app-view" hidden>
+      <section class="profile-layout">
+        <section class="profile-panel">
+          <div class="profile-card profile-card-main">
+            <p class="panel-label">Player Identity</p>
+            <div class="profile-hero">
+              <img id="profile-view-avatar" class="profile-page-avatar" src="" alt="Player profile">
+              <div>
+                <h2 id="profile-view-name" class="leaderboard-title">Guest</h2>
+                <p id="profile-view-username" class="auth-copy">@guest</p>
+                <p id="profile-view-gender" class="auth-copy">Gender: Not set</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-card">
+            <p class="panel-label">Career Stats</p>
+            <div class="scoreboard compact-scoreboard">
+              <div class="score-card">
+                <span class="score-label">Best Score</span>
+                <strong id="profile-best-score">0</strong>
+              </div>
+              <div class="score-card">
+                <span class="score-label">Best Solved</span>
+                <strong id="profile-best-solved">0</strong>
+              </div>
+              <div class="score-card">
+                <span class="score-label">Best Streak</span>
+                <strong id="profile-best-streak">0</strong>
+              </div>
+              <div class="score-card">
+                <span class="score-label">Hint Coins</span>
+                <strong id="profile-coins">0</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="profile-card">
+          <p class="panel-label">Edit Profile</p>
+          <form id="profile-form" class="profile-form">
+            <label class="auth-field">
+              <span>Game Name</span>
+              <input id="game-name-input" type="text" maxlength="20" placeholder="Enter game name">
+            </label>
+
+            <label class="auth-field">
+              <span>Gender</span>
+              <select id="gender-input">
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Non-binary">Non-binary</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+            </label>
+
+            <label class="auth-field profile-upload">
+              <span>Profile Image</span>
+              <input id="profile-image-input" type="file" accept="image/*">
+            </label>
+
+            <div class="profile-preview-wrap">
+              <img id="profile-preview" class="profile-preview" src="" alt="Profile preview">
+              <p class="auth-copy">This image is saved to your account.</p>
+            </div>
+
+            <button id="save-profile-button" type="submit">Save Profile</button>
+          </form>
+
+          <p id="profile-feedback" class="feedback auth-feedback" aria-live="polite">Update your profile here.</p>
+        </section>
+      </section>
+    </section>
+
+    <section id="view-leaderboard" class="app-view" hidden>
+      <section class="leaderboard-panel leaderboard-only">
+        <div class="leaderboard-header">
+          <div>
+            <p class="panel-label">Hall of Fame</p>
+            <h2 class="leaderboard-title">Leaderboard</h2>
+          </div>
+          <span class="badge">Top Players</span>
+        </div>
+
+        <div class="leaderboard-table-wrap">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Gender</th>
+                <th>Best Score</th>
+                <th>Solved</th>
+                <th>Best Streak</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <tr>
+                <td colspan="6" class="empty-state">No players yet. Register the first account to start the board.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="game-over-modal" class="game-over-modal" aria-labelledby="game-over-title" aria-modal="true" role="dialog" hidden>
+      <div class="game-over-card">
+        <p class="panel-label">Run Complete</p>
+        <h2 id="game-over-title">Game Over</h2>
+        <p id="game-over-message" class="game-over-message">No more attempts.</p>
+        <div class="game-over-stats">
+          <div>
+            <span>Score</span>
+            <strong id="game-over-score">0</strong>
+          </div>
+          <div>
+            <span>Solved</span>
+            <strong id="game-over-solved">0</strong>
+          </div>
+          <div>
+            <span>Best Rank</span>
+            <strong id="game-over-rank">--</strong>
+          </div>
+        </div>
+        <div class="game-over-stats game-over-stats-secondary">
+          <div>
+            <span>Personal Best</span>
+            <strong id="game-over-best">0</strong>
+          </div>
+        </div>
+        <p id="game-over-rank-copy" class="game-over-rank-copy">Log in to join the leaderboard.</p>
+        <div class="game-over-actions">
+          <button id="game-over-retry-button" type="button">Try Again</button>
+          <button id="game-over-share-button" class="secondary-button" type="button">Copy Result</button>
+          <button id="game-over-leaderboard-button" class="secondary-button" type="button">Leaderboard</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="questions.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
