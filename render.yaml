@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: history-hunt-ph
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATA_STORE
+        value: file
+      - key: JWT_SECRET
+        generateValue: true

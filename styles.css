@@ -69,6 +69,18 @@ body {
   display: none !important;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .hero {
   margin-bottom: 14px;
   padding: 18px 22px 20px;
@@ -758,6 +770,8 @@ button:hover:not(:disabled),
 }
 
 .guess-form input {
+  width: 100%;
+  min-width: 0;
   min-height: 54px;
   padding: 14px 16px;
   border-radius: 16px;
@@ -766,6 +780,11 @@ button:hover:not(:disabled),
   color: var(--ink);
   background: rgba(255, 252, 245, 0.94);
   box-shadow: inset 0 1px 2px rgba(36, 23, 15, 0.06);
+}
+
+.guess-form input:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .guess-form input:focus {

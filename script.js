@@ -22,6 +22,8 @@ const DEFAULT_AVATAR =
 const TOKEN_KEY = "historyHuntPH.token";
 const RUN_KEY = "historyHuntPH.currentRun";
 const PERSONAL_BEST_KEY = "historyHuntPH.personalBest";
+const ASSET_VERSION = "20260501-fix6";
+const MAX_RECENT_ANSWERS = 45;
 const NETWORK_ERROR_MESSAGE =
   "Could not reach the backend. Start the app with `npm.cmd start` and open it through http://localhost:3000.";
 
@@ -58,6 +60,7 @@ const state = {
   coins: 0,
   solved: 0,
   streak: 0,
+  answeredQuestions: [],
   roundLocked: false
 };
 
@@ -260,22 +263,16 @@ async function initialize() {
     const { user } = await apiRequest("/api/auth/me");
     applyUser(user);
     state.isGuest = false;
+    state.difficulty = getDifficultyForStreak(state.streak);
+    if (!restoreSavedRun({ userId: state.user.id })) {
+      startNewRun();
+    }
+    prepareRunForAuthenticatedUser();
     updateProfilePage();
     showShell();
     updateGuestNavigation();
 
-    if (!state.profileReady) {
-      if (isStandalonePage && pageName !== "profile") {
-        window.location.href = "/profile.html";
-        return;
-      }
-      switchView("profile");
-      setProfileFeedback("Complete your profile to unlock the game.", "error");
-      setGameplayAvailability();
-      return;
-    }
-
-    switchView(isStandalonePage ? pageName : "game");
+    routeAfterAuthentication(isStandalonePage ? pageName : "game");
     renderQuestion();
     updateGameStats();
     setGameplayAvailability();
@@ -309,25 +306,19 @@ async function handleLogin() {
     applyUser(result.user);
     state.isGuest = false;
     state.difficulty = getDifficultyForStreak(state.streak);
-    if (!restoreSavedRun()) {
-      state.questions = buildQuestionRun(state.difficulty);
-      state.currentIndex = 0;
-      saveCurrentRun();
+    if (!restoreSavedRun({ userId: state.user.id })) {
+      startNewRun();
     }
+    prepareRunForAuthenticatedUser();
     authElements.loginForm?.reset();
     authElements.registerForm?.reset();
     updateProfilePage();
     showShell();
     updateGuestNavigation();
 
-    if (!state.profileReady) {
-      switchView("profile");
-      setProfileFeedback("Complete your profile to start playing.", "success");
-    } else {
-      switchView("game");
-      renderQuestion();
-      updateGameStats();
-    }
+    routeAfterAuthentication("game");
+    renderQuestion();
+    updateGameStats();
   } catch (error) {
     setAuthFeedback(error.message || "Could not complete that request.", "error");
   }
@@ -358,11 +349,10 @@ async function handleRegister() {
     applyUser(result.user);
     state.isGuest = false;
     state.difficulty = getDifficultyForStreak(state.streak);
-    if (!restoreSavedRun()) {
-      state.questions = buildQuestionRun(state.difficulty);
-      state.currentIndex = 0;
-      saveCurrentRun();
+    if (!restoreSavedRun({ userId: state.user.id })) {
+      startNewRun();
     }
+    prepareRunForAuthenticatedUser();
     authElements.loginForm?.reset();
     authElements.registerForm?.reset();
     updateProfilePage();
@@ -370,14 +360,9 @@ async function handleRegister() {
     updateGuestNavigation();
     switchAuthMode("login");
 
-    if (!state.profileReady) {
-      switchView("profile");
-      setProfileFeedback("Complete your profile to start playing.", "success");
-    } else {
-      switchView("game");
-      renderQuestion();
-      updateGameStats();
-    }
+    routeAfterAuthentication("game");
+    renderQuestion();
+    updateGameStats();
   } catch (error) {
     setAuthFeedback(error.message || "Could not complete that request.", "error");
   }
@@ -398,7 +383,8 @@ function logoutUser() {
   state.roundLocked = false;
   state.currentIndex = 0;
   state.difficulty = getDifficultyForStreak(state.streak);
-  state.questions = buildQuestionRun(state.difficulty);
+  state.answeredQuestions = [];
+  state.questions = buildQuestionRun(state.difficulty, state.answeredQuestions);
   saveCurrentRun();
 
   if (autoAdvanceTimer) {
@@ -453,7 +439,8 @@ function startGuestRun() {
   state.attemptsLeft = 3;
   state.roundLocked = false;
   state.difficulty = getDifficultyForStreak(state.streak);
-  state.questions = buildQuestionRun(state.difficulty);
+  state.answeredQuestions = [];
+  state.questions = buildQuestionRun(state.difficulty, state.answeredQuestions);
   saveCurrentRun();
   showShell();
   updateGuestNavigation();
@@ -466,7 +453,7 @@ function startGuestRun() {
 async function handleGuessSubmit(event) {
   event.preventDefault();
 
-  if (!state.user || !state.profileReady || state.roundLocked) {
+  if (!canPlayCurrentRound()) {
     return;
   }
 
@@ -487,6 +474,7 @@ async function handleGuessSubmit(event) {
     state.streak += 1;
     state.difficulty = getDifficultyForStreak(state.streak);
     state.roundLocked = true;
+    rememberAnsweredQuestion(question.answer);
     await persistProgress();
     saveCurrentRun();
     const levelUpMessage = state.difficulty !== previousDifficulty
@@ -499,7 +487,7 @@ async function handleGuessSubmit(event) {
     lockRound();
     updateGameStats();
     showRoundActions(true);
-    autoAdvanceTimer = window.setTimeout(moveToNextQuestion, 80);
+    autoAdvanceTimer = window.setTimeout(moveToNextQuestion, 1600);
     return;
   }
 
@@ -527,26 +515,35 @@ async function handleGuessSubmit(event) {
 }
 
 async function handleBuyHint() {
-  if (!state.user || !state.profileReady || state.roundLocked) {
+  if (!canPlayCurrentRound()) {
     return;
   }
 
   const question = state.questions[state.currentIndex];
   const revealedHints = Number.parseInt(gameElements.hintButton?.dataset.revealedHints || "0", 10);
+  const hints = question?.hints || [];
 
-  if (revealedHints >= question.hints.length) {
-    gameElements.hintText.textContent = "No more hints available for this question.";
+  if (revealedHints >= hints.length) {
+    if (gameElements.hintText) {
+      gameElements.hintText.textContent = "No more hints available for this question.";
+    }
     return;
   }
 
   if (state.coins < 3) {
-    gameElements.hintText.textContent = "You need at least 3 hint coins to buy a hint.";
+    if (gameElements.hintText) {
+      gameElements.hintText.textContent = "You need at least 3 hint coins to buy a hint.";
+    }
     return;
   }
 
   state.coins -= 3;
-  gameElements.hintText.textContent = question.hints[revealedHints];
-  gameElements.hintButton.dataset.revealedHints = String(revealedHints + 1);
+  if (gameElements.hintText) {
+    gameElements.hintText.textContent = hints[revealedHints];
+  }
+  if (gameElements.hintButton) {
+    gameElements.hintButton.dataset.revealedHints = String(revealedHints + 1);
+  }
   await persistProgress();
   saveCurrentRun();
   updateGameStats();
@@ -614,7 +611,16 @@ async function saveProfile() {
 }
 
 function renderQuestion() {
-  if (!gameElements.image || !gameElements.roundLabel || !gameElements.attemptsLabel) {
+  if (
+    !gameElements.image ||
+    !gameElements.roundLabel ||
+    !gameElements.attemptsLabel ||
+    !gameElements.title ||
+    !gameElements.description ||
+    !gameElements.feedback ||
+    !gameElements.hintText ||
+    !gameElements.input
+  ) {
     return;
   }
 
@@ -632,12 +638,15 @@ function renderQuestion() {
   gameElements.description.textContent = question.description;
   gameElements.image.alt = `Historical image clue for ${question.title}`;
   gameElements.image.classList.add("is-loading");
-  gameElements.image.src = createQuestionPlaceholder(question);
+  gameElements.image.dataset.imageToken = String(Date.now());
+  gameElements.image.src = createQuestionPlaceholder(question, "Loading image clue...");
   loadQuestionImage(question);
   gameElements.feedback.textContent = "Look closely at the image and clue, then enter your answer. First try gives 3 points, second try gives 2, third try gives 0.";
   gameElements.feedback.className = "feedback";
   gameElements.hintText.textContent = "Earn points from correct answers to unlock hints in later rounds.";
-  gameElements.hintButton.dataset.revealedHints = "0";
+  if (gameElements.hintButton) {
+    gameElements.hintButton.dataset.revealedHints = "0";
+  }
   gameElements.input.value = "";
   showRoundActions(state.roundLocked);
   updateGameStats();
@@ -649,37 +658,82 @@ function renderQuestion() {
   transitionTimer = window.setTimeout(() => {
     gameElements.cardFrame?.classList.remove("is-transitioning");
     gameElements.contentPanel?.classList.remove("is-transitioning");
-    if (state.activeView === "game" && state.profileReady) {
+    if (state.activeView === "game" && canPlayCurrentRound()) {
       gameElements.input.focus();
     }
   }, 120);
 }
 
 function loadQuestionImage(question) {
+  if (!gameElements.image) {
+    return;
+  }
+
+  const imageToken = gameElements.image.dataset.imageToken || "";
+  const imageSources = getQuestionImageSources(question);
+
+  if (!imageSources.length) {
+    gameElements.image.src = createQuestionPlaceholder(question, "No image URL set. Use the clue text.");
+    gameElements.image.classList.remove("is-loading");
+    return;
+  }
+
   const image = new Image();
   let fallbackTimer = window.setTimeout(() => {
-    if (state.questions[state.currentIndex] === question && gameElements.image) {
+    if (isCurrentQuestionImage(question, imageToken)) {
       gameElements.image.classList.remove("is-loading");
     }
-  }, 900);
+  }, 1200);
+
+  let sourceIndex = 0;
 
   image.onload = () => {
     window.clearTimeout(fallbackTimer);
-    if (state.questions[state.currentIndex] !== question || !gameElements.image) {
+    if (!isCurrentQuestionImage(question, imageToken)) {
       return;
     }
-    gameElements.image.src = question.image;
+    gameElements.image.src = imageSources[sourceIndex];
     gameElements.image.classList.remove("is-loading");
   };
+
   image.onerror = () => {
+    sourceIndex += 1;
+
+    if (sourceIndex < imageSources.length) {
+      image.src = imageSources[sourceIndex];
+      return;
+    }
+
     window.clearTimeout(fallbackTimer);
-    if (state.questions[state.currentIndex] === question && gameElements.image) {
-      gameElements.image.src = createQuestionPlaceholder(question);
+    if (isCurrentQuestionImage(question, imageToken)) {
+      gameElements.image.src = createQuestionPlaceholder(question, "Image unavailable. Use the clue text.");
       gameElements.image.classList.remove("is-loading");
     }
   };
+
   image.referrerPolicy = "no-referrer";
-  image.src = question.image;
+  image.src = imageSources[sourceIndex];
+}
+
+function isCurrentQuestionImage(question, imageToken) {
+  return state.questions[state.currentIndex] === question &&
+    gameElements.image &&
+    gameElements.image.dataset.imageToken === imageToken;
+}
+
+function getQuestionImageSources(question) {
+  const originalUrl = question.image || "";
+
+  if (!originalUrl) {
+    return [];
+  }
+
+  return [
+    `/api/image?url=${encodeURIComponent(originalUrl)}&v=${ASSET_VERSION}`,
+    `/api/commons-image?query=${encodeURIComponent(question.answer)}&v=${ASSET_VERSION}`,
+    `/api/commons-image?query=${encodeURIComponent(question.title)}&v=${ASSET_VERSION}`,
+    originalUrl
+  ];
 }
 
 function moveToNextQuestion() {
@@ -693,12 +747,45 @@ function moveToNextQuestion() {
 
   if (state.currentIndex >= state.questions.length) {
     state.difficulty = getDifficultyForStreak(state.streak);
-    state.questions = buildQuestionRun(state.difficulty);
+    state.questions = buildQuestionRun(state.difficulty, state.answeredQuestions);
     state.currentIndex = 0;
   }
 
   saveCurrentRun();
   renderQuestion();
+}
+
+function startNewRun() {
+  state.questions = buildQuestionRun(state.difficulty, state.answeredQuestions);
+  state.currentIndex = 0;
+  state.attemptsLeft = 3;
+  state.roundLocked = false;
+  saveCurrentRun();
+}
+
+function prepareRunForAuthenticatedUser() {
+  if (!state.user || state.isGuest) {
+    return;
+  }
+
+  if (!state.questions.length) {
+    state.difficulty = getDifficultyForStreak(state.streak);
+    startNewRun();
+  }
+
+  if (state.roundLocked) {
+    state.currentIndex += 1;
+    state.attemptsLeft = 3;
+    state.roundLocked = false;
+
+    if (state.currentIndex >= state.questions.length) {
+      state.difficulty = getDifficultyForStreak(state.streak);
+      state.questions = buildQuestionRun(state.difficulty, state.answeredQuestions);
+      state.currentIndex = 0;
+    }
+  }
+
+  saveCurrentRun();
 }
 
 function lockRound() {
@@ -722,7 +809,9 @@ function updateGameStats() {
 
   const question = state.questions[state.currentIndex];
   const revealedHints = Number.parseInt(gameElements.hintButton?.dataset.revealedHints || "0", 10);
-  gameElements.hintButton.disabled = !state.user || !state.profileReady || state.roundLocked || state.coins < 3 || revealedHints >= question.hints.length;
+  if (gameElements.hintButton) {
+    gameElements.hintButton.disabled = !canPlayCurrentRound() || state.coins < 3 || revealedHints >= (question?.hints?.length || 0);
+  }
   updateMissionProgress();
   updateProfilePage();
 }
@@ -758,18 +847,23 @@ function updateProfilePage() {
 }
 
 function setGameplayAvailability() {
-  const isPlayable = Boolean(state.user) && state.profileReady && !state.roundLocked;
+  const isPlayable = canPlayCurrentRound();
   if (gameElements.input) {
     gameElements.input.disabled = !isPlayable;
+    gameElements.input.readOnly = false;
   }
   if (gameElements.submitButton) {
     gameElements.submitButton.disabled = !isPlayable;
   }
-  if (!state.user || !state.profileReady) {
+  if (!state.user) {
     if (gameElements.hintButton) {
       gameElements.hintButton.disabled = true;
     }
   }
+}
+
+function canPlayCurrentRound() {
+  return Boolean(state.user) && (state.isGuest || state.profileReady) && !state.roundLocked;
 }
 
 function updateMissionProgress() {
@@ -799,7 +893,7 @@ function showRoundActions(showNext) {
     gameElements.nextButton.hidden = !showNext;
   }
   if (gameElements.saveRunButton) {
-    gameElements.saveRunButton.hidden = !state.isGuest;
+    gameElements.saveRunButton.hidden = !state.isGuest || (state.score <= 0 && state.solved <= 0);
   }
 }
 
@@ -847,7 +941,8 @@ function restartAfterGameOver() {
   state.attemptsLeft = 3;
   state.roundLocked = false;
   state.difficulty = getDifficultyForStreak(state.streak);
-  state.questions = buildQuestionRun(state.difficulty);
+  state.answeredQuestions = [];
+  state.questions = buildQuestionRun(state.difficulty, state.answeredQuestions);
   saveCurrentRun();
   renderQuestion();
   updateGameStats();
@@ -886,8 +981,12 @@ async function getCurrentLeaderboardRank() {
 
 function promptSaveRun() {
   clearSavedRun();
-  authScreen.hidden = false;
-  appShell.hidden = true;
+  if (authScreen) {
+    authScreen.hidden = false;
+  }
+  if (appShell) {
+    appShell.hidden = true;
+  }
   state.isGuest = false;
   state.user = null;
   state.profileReady = false;
@@ -912,6 +1011,11 @@ function switchView(viewName) {
     viewName = "game";
   }
 
+  if (!state.isGuest && state.user && !state.profileReady && viewName === "game") {
+    viewName = "profile";
+    setProfileFeedback("Complete your game name, gender, and profile image before playing.", "error");
+  }
+
   state.activeView = viewName;
 
   Object.entries(views).forEach(([key, element]) => {
@@ -931,6 +1035,17 @@ function switchView(viewName) {
     shellHeader.title.textContent = meta.title;
     shellHeader.intro.textContent = meta.intro;
   }
+}
+
+function routeAfterAuthentication(preferredView = "game") {
+  if (!state.profileReady) {
+    switchView("profile");
+    setProfileFeedback("Set up your game name, gender, and profile image before playing.", "success");
+    setGameplayAvailability();
+    return;
+  }
+
+  switchView(preferredView);
 }
 
 function showShell() {
@@ -977,7 +1092,10 @@ function togglePasswordVisibility(button) {
   input.type = shouldShow ? "text" : "password";
   button.setAttribute("aria-pressed", String(shouldShow));
   button.setAttribute("aria-label", shouldShow ? "Hide password" : "Show password");
-  button.querySelector("span").textContent = shouldShow ? "Hide" : "Show";
+  const buttonLabel = button.querySelector("span");
+  if (buttonLabel) {
+    buttonLabel.textContent = shouldShow ? "Hide" : "Show";
+  }
   input.focus();
 }
 
@@ -1004,8 +1122,13 @@ async function persistProgress() {
 
 async function refreshLeaderboard() {
   const { players } = await apiRequest("/api/leaderboard", { method: "GET" }, false);
-  renderLeaderboard(players || []);
-  return players || [];
+  const accountPlayers = (players || []).filter(isAccountLeaderboardPlayer);
+  renderLeaderboard(accountPlayers);
+  return accountPlayers;
+}
+
+function isAccountLeaderboardPlayer(player) {
+  return player && String(player.username || "").trim().toLowerCase() !== "guest";
 }
 
 function renderLeaderboard(players) {
@@ -1164,10 +1287,31 @@ function shuffle(items) {
   return items;
 }
 
-function buildQuestionRun(difficulty) {
+function buildQuestionRun(difficulty, excludedAnswers = []) {
   const filteredQuestions = getQuestionsForDifficulty(difficulty);
   const source = filteredQuestions.length >= ROUND_COUNT ? filteredQuestions : historyQuestions;
-  return shuffle([...source]).slice(0, Math.min(ROUND_COUNT, source.length));
+  const excluded = new Set(excludedAnswers.map(normalizeText));
+  let availableQuestions = source.filter((question) => !excluded.has(normalizeText(question.answer)));
+
+  if (!availableQuestions.length) {
+    availableQuestions = source;
+    state.answeredQuestions = [];
+  }
+
+  return shuffle([...availableQuestions]).slice(0, Math.min(ROUND_COUNT, availableQuestions.length));
+}
+
+function rememberAnsweredQuestion(answer) {
+  const normalizedAnswer = normalizeText(answer);
+
+  if (!normalizedAnswer) {
+    return;
+  }
+
+  state.answeredQuestions = [
+    ...state.answeredQuestions.filter((savedAnswer) => normalizeText(savedAnswer) !== normalizedAnswer),
+    answer
+  ].slice(-MAX_RECENT_ANSWERS);
 }
 
 function getDailySeed() {
@@ -1197,6 +1341,7 @@ function readStoredNumber(key) {
 
 function saveCurrentRun() {
   const payload = {
+    userId: state.user?.id || "",
     questionAnswers: state.questions.map((question) => question.answer),
     currentIndex: state.currentIndex,
     attemptsLeft: state.attemptsLeft,
@@ -1205,6 +1350,7 @@ function saveCurrentRun() {
     solved: state.solved,
     streak: state.streak,
     difficulty: state.difficulty,
+    answeredQuestions: state.answeredQuestions,
     isGuest: state.isGuest,
     roundLocked: state.roundLocked
   };
@@ -1212,7 +1358,7 @@ function saveCurrentRun() {
   window.localStorage.setItem(RUN_KEY, JSON.stringify(payload));
 }
 
-function restoreSavedRun() {
+function restoreSavedRun(options = {}) {
   try {
     const rawRun = window.localStorage.getItem(RUN_KEY);
     if (!rawRun) {
@@ -1220,6 +1366,14 @@ function restoreSavedRun() {
     }
 
     const savedRun = JSON.parse(rawRun);
+    if (options.userId && savedRun.userId && String(savedRun.userId) !== String(options.userId)) {
+      return false;
+    }
+
+    if (options.userId && savedRun.isGuest) {
+      return false;
+    }
+
     const questions = Array.isArray(savedRun.questionAnswers)
       ? savedRun.questionAnswers
           .map((answer) => historyQuestions.find((question) => question.answer === answer))
@@ -1238,6 +1392,9 @@ function restoreSavedRun() {
     state.solved = clampNumber(savedRun.solved, 0, 999999);
     state.streak = clampNumber(savedRun.streak, 0, 999999);
     state.difficulty = savedRun.difficulty || getDifficultyForStreak(state.streak);
+    state.answeredQuestions = Array.isArray(savedRun.answeredQuestions)
+      ? savedRun.answeredQuestions.filter((answer) => typeof answer === "string").slice(-MAX_RECENT_ANSWERS)
+      : [];
     state.isGuest = Boolean(savedRun.isGuest);
     state.roundLocked = Boolean(savedRun.roundLocked);
     return true;
@@ -1289,9 +1446,11 @@ function formatDifficulty(difficulty) {
   return "Easy";
 }
 
-function createQuestionPlaceholder(question) {
+function createQuestionPlaceholder(question, statusText = "Image clue loading...") {
   const safeTitle = escapeHtml(question.title);
+  const safeDescription = escapeHtml(question.description);
   const safeLevel = escapeHtml(formatDifficulty(question.difficulty || "easy"));
+  const safeStatus = escapeHtml(statusText);
   return "data:image/svg+xml;charset=UTF-8," +
     encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1040">
@@ -1312,9 +1471,12 @@ function createQuestionPlaceholder(question) {
         <circle cx="450" cy="292" r="72" fill="#8f1d1d" opacity="0.28"/>
         <path d="M278 605c44-116 112-174 172-174s128 58 172 174" fill="#8f1d1d" opacity="0.2"/>
         <path d="M235 705h430" stroke="#a86c13" stroke-width="10" stroke-linecap="round" opacity="0.36"/>
-        <text x="450" y="730" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="700" fill="#24170f">${safeTitle}</text>
+        <text x="450" y="700" text-anchor="middle" font-family="Georgia, serif" font-size="44" font-weight="700" fill="#24170f">${safeTitle}</text>
         <text x="450" y="792" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#654731" letter-spacing="4">${safeLevel.toUpperCase()} CLUE</text>
-        <text x="450" y="855" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#654731">Image clue loading...</text>
+        <text x="450" y="842" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#654731">${safeStatus}</text>
+        <foreignObject x="140" y="870" width="620" height="95">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 24px; line-height: 1.35; color: #654731; text-align: center;">${safeDescription}</div>
+        </foreignObject>
       </svg>
     `);
 }
