@@ -8,6 +8,7 @@ require("dotenv").config();
 
 const app = express();
 const port = Number.parseInt(process.env.PORT || "3000", 10);
+const host = process.env.HOST || "0.0.0.0";
 const jwtSecret = process.env.JWT_SECRET || "change-this-secret";
 const dataStore = process.env.DATA_STORE === "mysql"
   ? createMysqlStore()
@@ -173,8 +174,8 @@ app.get("*", (_req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-app.listen(port, () => {
-  console.log(`History Hunt PH server running at http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`History Hunt PH server running on ${host}:${port}`);
   console.log(`Using ${process.env.DATA_STORE === "mysql" ? "MySQL" : "local file"} data store.`);
 });
 
