@@ -10,6 +10,16 @@ const app = express();
 const port = Number.parseInt(process.env.PORT || "3000", 10);
 const host = process.env.HOST || "0.0.0.0";
 const jwtSecret = process.env.JWT_SECRET || "change-this-secret";
+const requiredMysqlEnv = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
+const databaseErrorCodes = new Set([
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "ETIMEDOUT",
+  "ER_ACCESS_DENIED_ERROR",
+  "ER_BAD_DB_ERROR",
+  "ER_DBACCESS_DENIED_ERROR",
+  "ER_NO_SUCH_TABLE"
+]);
 const dataStore = process.env.DATA_STORE === "mysql"
   ? createMysqlStore()
   : createFileStore();
@@ -327,6 +337,7 @@ async function findCommonsImageUrl(query) {
 
 function createMysqlStore() {
   const useSsl = String(process.env.DB_SSL || "").toLowerCase() === "true";
+  const missingEnv = requiredMysqlEnv.filter((key) => !process.env[key]);
   let schemaReady;
   const pool = mysql.createPool({
     host: process.env.DB_HOST || "127.0.0.1",
@@ -340,6 +351,12 @@ function createMysqlStore() {
   });
 
   async function ensureSchema() {
+    if (missingEnv.length) {
+      const error = new Error(`Missing MySQL environment variables: ${missingEnv.join(", ")}`);
+      error.statusCode = 503;
+      throw error;
+    }
+
     if (!schemaReady) {
       schemaReady = pool.execute(createUsersTableSql);
     }
@@ -584,6 +601,13 @@ function toNonNegativeNumber(value) {
 function handleServerError(res, error) {
   if (error.statusCode) {
     return res.status(error.statusCode).json({ error: error.message });
+  }
+
+  if (databaseErrorCodes.has(error.code)) {
+    console.error(error);
+    return res.status(503).json({
+      error: "Database connection failed. Check the MySQL environment variables in Render."
+    });
   }
 
   console.error(error);
