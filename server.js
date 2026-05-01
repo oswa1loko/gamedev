@@ -14,6 +14,27 @@ const dataStore = process.env.DATA_STORE === "mysql"
   ? createMysqlStore()
   : createFileStore();
 const commonsImageCache = new Map();
+const createUsersTableSql = `
+  CREATE TABLE IF NOT EXISTS users (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    username VARCHAR(18) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    game_name VARCHAR(20) DEFAULT NULL,
+    gender VARCHAR(32) DEFAULT NULL,
+    avatar LONGTEXT DEFAULT NULL,
+    score INT NOT NULL DEFAULT 0,
+    coins INT NOT NULL DEFAULT 0,
+    solved INT NOT NULL DEFAULT 0,
+    streak INT NOT NULL DEFAULT 0,
+    best_score INT NOT NULL DEFAULT 0,
+    best_solved INT NOT NULL DEFAULT 0,
+    best_streak INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_username (username)
+  )
+`;
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(__dirname));
@@ -306,6 +327,7 @@ async function findCommonsImageUrl(query) {
 
 function createMysqlStore() {
   const useSsl = String(process.env.DB_SSL || "").toLowerCase() === "true";
+  let schemaReady;
   const pool = mysql.createPool({
     host: process.env.DB_HOST || "127.0.0.1",
     port: Number.parseInt(process.env.DB_PORT || "3306", 10),
@@ -317,18 +339,29 @@ function createMysqlStore() {
     connectionLimit: 10
   });
 
+  async function ensureSchema() {
+    if (!schemaReady) {
+      schemaReady = pool.execute(createUsersTableSql);
+    }
+
+    await schemaReady;
+  }
+
   return {
     async findUserById(id) {
+      await ensureSchema();
       const [rows] = await pool.execute("SELECT * FROM users WHERE id = ? LIMIT 1", [id]);
       return rows[0] || null;
     },
 
     async findUserByUsername(username) {
+      await ensureSchema();
       const [rows] = await pool.execute("SELECT * FROM users WHERE username = ? LIMIT 1", [username]);
       return rows[0] || null;
     },
 
     async createUser(username, passwordHash) {
+      await ensureSchema();
       const [result] = await pool.execute(
         `INSERT INTO users
           (username, password_hash, score, coins, solved, streak, best_score, best_solved, best_streak)
@@ -339,6 +372,7 @@ function createMysqlStore() {
     },
 
     async updateProfile(id, profile) {
+      await ensureSchema();
       await pool.execute(
         `UPDATE users
          SET game_name = ?, gender = ?, avatar = ?, updated_at = NOW()
@@ -349,6 +383,7 @@ function createMysqlStore() {
     },
 
     async updateProgress(id, progress) {
+      await ensureSchema();
       await pool.execute(
         `UPDATE users
          SET score = ?,
@@ -375,6 +410,7 @@ function createMysqlStore() {
     },
 
     async listLeaderboard() {
+      await ensureSchema();
       const [rows] = await pool.execute(
         `SELECT username, game_name, gender, avatar, best_score, best_solved, best_streak
          FROM users
