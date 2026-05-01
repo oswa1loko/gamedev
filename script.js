@@ -22,10 +22,9 @@ const DEFAULT_AVATAR =
 const TOKEN_KEY = "historyHuntPH.token";
 const RUN_KEY = "historyHuntPH.currentRun";
 const PERSONAL_BEST_KEY = "historyHuntPH.personalBest";
-const ASSET_VERSION = "20260501-fix6";
+const ASSET_VERSION = "20260501-fix7";
 const MAX_RECENT_ANSWERS = 45;
-const NETWORK_ERROR_MESSAGE =
-  "Could not reach the backend. Start the app with `npm.cmd start` and open it through http://localhost:3000.";
+const NETWORK_ERROR_MESSAGE = getNetworkErrorMessage();
 
 const VIEW_META = {
   game: {
@@ -864,6 +863,17 @@ function setGameplayAvailability() {
 
 function canPlayCurrentRound() {
   return Boolean(state.user) && (state.isGuest || state.profileReady) && !state.roundLocked;
+}
+
+function getNetworkErrorMessage() {
+  const isLocalFile = window.location.protocol === "file:";
+  const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+  if (isLocalFile || isLocalHost) {
+    return "Could not reach the backend. Start the app with `npm.cmd start` and open it through http://localhost:3000.";
+  }
+
+  return "Could not reach the backend. Check that the Render web service is running and that the database environment variables are set.";
 }
 
 function updateMissionProgress() {
